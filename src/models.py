@@ -8,6 +8,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Table,
+    text,
     create_engine,
 )
 from sqlalchemy.orm import relationship, sessionmaker, Session
@@ -34,37 +35,50 @@ class Artist(Base):
     ArtistId = Column(Integer, primary_key=True)
     Name = Column(String(120))
 
-    @staticmethod
-    def get_all(db: Session) -> List[schemas.ArtistSchema]:
-        artists: List[Artist] = db.query(Artist).all()
-        result: List[schemas.ArtistSchema] = []
-        for artist in artists:
-            result.append(
-                schemas.ArtistSchema(
-                    artist_id=artist.ArtistId,
-                    name=artist.Name,
-                )
-            )
-        return result
-
-    @staticmethod
-    def get_one(db: Session, artist_id: int) -> schemas.ArtistSchema:
-        artist: Artist = db.query(Artist).filter_by(ArtistId=artist_id).first()
+    def parse(self) -> schemas.ArtistSchema:
         return schemas.ArtistSchema(
-            artist_id=artist.ArtistId,
-            name=artist.Name,
+            artist_id=self.ArtistId,
+            name=self.Name,
         )
 
     @staticmethod
-    def get_albums(db: Session, artist_id: int) -> List[schemas.AlbumSchema]:
-        albums: List[Album] = db.query(Album).filter_by(ArtistId=artist_id).all()
-        result: List[schemas.AlbumSchema] = []
-        for album in albums:
+    def get_all(db: Session) -> list[schemas.ArtistSchema]:
+        return [x.parse() for x in db.query(Artist).all()]
+
+    @staticmethod
+    def get_one(db: Session, artist_id: int) -> schemas.ArtistSchema:
+        artist: Artist = db.query(Artist).filter(Artist.ArtistId == artist_id).first()
+        return artist.parse()
+
+    @staticmethod
+    def get_albums(db: Session, artist_id: int) -> list[schemas.AlbumSchema]:
+        return [x.parse() for x in db.query(Album).filter_by(ArtistId=artist_id).all()]
+
+    @staticmethod
+    def get_tracks(db: Session, artist_id: int) -> list[schemas.TrackSchema]:
+        query = db.execute(
+            text(
+                """
+                SELECT "Track".* FROM "Track" 
+                    LEFT JOIN "Album" ON "Track"."AlbumId" = "Album"."AlbumId"
+                    LEFT JOIN "Artist" ON "Album"."ArtistId" = "Artist"."ArtistId"
+                WHERE "Artist"."ArtistId"=:artist_id
+            """
+            ).bindparams(artist_id=artist_id),
+        )
+        result: list[schemas.TrackSchema] = []
+        for row in query:
             result.append(
-                schemas.AlbumSchema(
-                    album_id=album.AlbumId,
-                    title=album.Title,
-                    artist_id=album.ArtistId,
+                schemas.TrackSchema(
+                    track_id=row.TrackId,
+                    album_id=row.AlbumId,
+                    genre_id=row.GenreId,
+                    media_type_id=row.MediaTypeId,
+                    bytes=row.Bytes,
+                    composer=row.Composer,
+                    milliseconds=row.Milliseconds,
+                    name=row.Name,
+                    unit_price=row.UnitPrice,
                 )
             )
         return result
@@ -98,12 +112,28 @@ class Genre(Base):
     GenreId = Column(Integer, primary_key=True)
     Name = Column(String(120))
 
+    def parse(self) -> schemas.GenreSchema:
+        return schemas.GenreSchema(
+            genre_id=self.GenreId,
+            name=self.Name,
+        )
+
 
 class MediaType(Base):
     __tablename__ = "MediaType"
 
     MediaTypeId = Column(Integer, primary_key=True)
     Name = Column(String(120))
+
+    def parse(self) -> schemas.MediaTypeSchema:
+        return schemas.MediaTypeSchema(
+            media_type_id=self.MediaTypeId,
+            name=self.Name,
+        )
+
+    @staticmethod
+    def get_all(db: Session) -> list[schemas.MediaTypeSchema]:
+        return [x.parse() for x in db.query(MediaType).all()]
 
 
 class Playlist(Base):
@@ -123,6 +153,21 @@ class Album(Base):
     ArtistId = Column(ForeignKey("Artist.ArtistId"), nullable=False, index=True)
 
     Artist = relationship("Artist")
+
+    def parse(self) -> schemas.AlbumSchema:
+        return schemas.AlbumSchema(
+            album_id=self.AlbumId,
+            artist_id=self.ArtistId,
+            title=self.Title,
+        )
+
+    @staticmethod
+    def get_all(db: Session):
+        return [x.parse() for x in db.query(Album).all()]
+
+    @staticmethod
+    def get_one(db: Session, album_id: int):
+        return db.query(Album).filter(Album.AlbumId == album_id).one().parse()
 
 
 class Customer(Base):
@@ -177,6 +222,31 @@ class Track(Base):
     Album = relationship("Album")
     Genre = relationship("Genre")
     MediaType = relationship("MediaType")
+
+    def parse(self) -> schemas.TrackSchema:
+        return schemas.TrackSchema(
+            track_id=self.TrackId,
+            album_id=self.AlbumId,
+            genre_id=self.GenreId,
+            media_type_id=self.MediaTypeId,
+            name=self.Name,
+            bytes=self.Bytes,
+            composer=self.Composer,
+            milliseconds=self.Milliseconds,
+            unit_price=self.UnitPrice,
+        )
+
+    @staticmethod
+    def get_all(db: Session) -> List[schemas.TrackSchema]:
+        return [x.parse() for x in db.query(Track).all()]
+
+    @staticmethod
+    def get_one(db: Session, track_id: int):
+        return db.query(Track).filter(Track.TrackId == track_id).one().parse()
+
+    @staticmethod
+    def get_all_by_album(db: Session, album_id: int):
+        return [x.parse() for x in db.query(Track).filter(Track.AlbumId == album_id).all()]
 
 
 class InvoiceLine(Base):
