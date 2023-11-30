@@ -1,7 +1,9 @@
 # coding: utf-8
+from typing import List
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, Table, create_engine
 from sqlalchemy.orm import relationship, sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
+from src import schemas
 
 
 # SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
@@ -24,12 +26,23 @@ class Artist(Base):
     Name = Column(String(120))
 
     @staticmethod
-    def get_all(db: Session):
-        return db.query(Artist).all()
+    def get_all(db: Session) -> List[schemas.ArtistSchema]:
+        artists: List[Artist] = db.query(Artist).all()
+        result: List[schemas.ArtistSchema] = []
+        for artist in artists:
+            result.append(schemas.ArtistSchema(
+                artist_id=artist.ArtistId,
+                name=artist.Name,
+            ))
+        return result
 
     @staticmethod
-    def get_one(db: Session, id: int):
-        return db.query(Artist).filter_by(Artist.ArtistId == id).first()
+    def get_one(db: Session, id: int) -> schemas.ArtistSchema:
+        artist: Artist = db.query(Artist).filter_by(ArtistId = id).first()
+        return schemas.ArtistSchema(
+            artist_id=artist.ArtistId,
+            name=artist.Name,
+        )
 
 
 
