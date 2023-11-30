@@ -6,12 +6,16 @@ from src.models import Artist
 from src.schemas import ArtistSchema
 
 
-router = APIRouter()
+router = APIRouter(prefix="/artist")
 
-@router.get("/artist")
-def get_all_artist(db:Session = Depends(get_db)) -> List[ArtistSchema]:
+@router.get("/")
+def all_artist(db:Session = Depends(get_db)) -> List[ArtistSchema]:
     return Artist.get_all(db)
 
-@router.get("/artist/{artist_id}")
-def get_one_artist(artist_id: int, db:Session = Depends(get_db)) -> ArtistSchema:
+@router.get("/{artist_id}")
+def artist(artist_id: int, db:Session = Depends(get_db)) -> ArtistSchema:
     return Artist.get_one(db, artist_id)
+
+@router.get("/{artist_id}/albums")
+def albums(artist_id: int, db:Session = Depends(get_db)):
+    return Artist.get_albums(db=db, artist_id=artist_id)

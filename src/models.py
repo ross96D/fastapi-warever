@@ -37,12 +37,24 @@ class Artist(Base):
         return result
 
     @staticmethod
-    def get_one(db: Session, id: int) -> schemas.ArtistSchema:
-        artist: Artist = db.query(Artist).filter_by(ArtistId = id).first()
+    def get_one(db: Session, artist_id: int) -> schemas.ArtistSchema:
+        artist: Artist = db.query(Artist).filter_by(ArtistId = artist_id).first()
         return schemas.ArtistSchema(
             artist_id=artist.ArtistId,
             name=artist.Name,
         )
+
+    @staticmethod
+    def get_albums(db: Session, artist_id: int) -> List[schemas.AlbumSchema]:
+        albums: List[Album] = db.query(Album).filter_by(ArtistId=artist_id).all()
+        result: List[schemas.AlbumSchema] = []
+        for album in albums:
+            result.append(schemas.AlbumSchema(
+                album_id=album.AlbumId,
+                title=album.Title,
+                artist_id=album.ArtistId,
+            ))
+        return result
 
 
 
