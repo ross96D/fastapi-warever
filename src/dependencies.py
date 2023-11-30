@@ -1,5 +1,6 @@
 from src.models import SessionLocal
 
+
 # Dependency
 def get_db():
     db = SessionLocal()
