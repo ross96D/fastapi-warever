@@ -1,4 +1,4 @@
-from src.models import SessionLocal
+from src.models.base import SessionLocal
 
 
 # Dependency
