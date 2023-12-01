@@ -2,4 +2,4 @@ version: '3'
 tasks:
   dev:
     cmds:
-      - uvicorn src.main:app
+      - uvicorn src.main:app --reload
